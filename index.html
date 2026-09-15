@@ -238,6 +238,7 @@
         <button class="chip on" data-type="읽기">📖 읽기</button>
         <button class="chip" data-type="생각">💬 생각 말하기</button>
         <button class="chip" data-type="설명">🧩 설명하기</button>
+        <button class="chip" data-type="순발력">⚡ 순발력</button>
       </div>
 
       <div class="prompt">
@@ -373,19 +374,26 @@
       "당신이 사는 동네를, 한 번도 안 가본 사람에게 소개하듯 설명해보세요."
     ]
   };
-  const LABEL = {읽기:"낭독 원고", 생각:"생각 주제", 설명:"설명 주제"};
-  let type="읽기", qIndex=0;
+  const LABEL = {읽기:"낭독 원고", 생각:"생각 주제", 설명:"설명 주제", 순발력:"세 단어 이야기"};
+  const WORDS = ["바다","시계","약속","우산","기차","편지","골목","거울","열쇠","사진","커피","계단","바람","지도","촛불","신발","창문","노래","그림자","사탕","언덕","우주","다리","모자","강아지","별","지하철","도서관","얼음","향수","라디오","단추","고양이","눈물","시장"];
+  let type="읽기", qIndex=0, quickWords=[];
   const qt=$("qt"), answer=$("answer");
   function randIndex(len, exclude){ if(len<=1) return 0; let i; do{ i=Math.floor(Math.random()*len); }while(i===exclude); return i; }
-  function showQuestion(){ qt.textContent = BANK[type][qIndex % BANK[type].length]; $("q-label").textContent=LABEL[type]; }
-  function rotateQuestion(){ qIndex=randIndex(BANK[type].length, qIndex); showQuestion(); }
+  function pickQuick(){ const pool=WORDS.slice(), out=[]; for(let i=0;i<3;i++){ out.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]); } quickWords=out; }
+  function questionText(){
+    if(type==="순발력") return "다음 세 단어를 모두 넣어, 즉석에서 30초~1분짜리 이야기를 만들어 말해보세요:\n\n①  "+quickWords[0]+"      ②  "+quickWords[1]+"      ③  "+quickWords[2];
+    return BANK[type][qIndex % BANK[type].length];
+  }
+  function showQuestion(){ qt.textContent = questionText(); $("q-label").textContent=LABEL[type]; }
+  function advance(){ if(type==="순발력") pickQuick(); else qIndex=randIndex(BANK[type].length, qIndex); }
   $("chips").addEventListener("click", e=>{
     const b=e.target.closest(".chip"); if(!b) return;
-    type=b.dataset.type; qIndex=randIndex(BANK[type].length, -1);
+    type=b.dataset.type;
+    if(type==="순발력") pickQuick(); else qIndex=randIndex(BANK[type].length, -1);
     document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on", c===b));
     showQuestion(); resetAnswer(); hideFeedback(); hideVoice(); lastAcoustic=null;
   });
-  $("nextq").addEventListener("click", ()=>{ rotateQuestion(); resetAnswer(); hideFeedback(); hideVoice(); lastAcoustic=null; });
+  $("nextq").addEventListener("click", ()=>{ advance(); showQuestion(); resetAnswer(); hideFeedback(); hideVoice(); lastAcoustic=null; });
   function resetAnswer(){ if(recording) stopRec(); baseText=""; answer.value=""; updateCounts(); setMicStatus(null); }
 
   // ---------- local metrics ----------
@@ -555,7 +563,8 @@
     const focus={
       읽기:"주어진 원고를 소리 내어 읽은 결과다. 원고 내용을 정확히 전달했는지, 끊어읽기·강조·리듬이 자연스러운지, 어색하게 읽힌 부분이 있는지를 본다.",
       생각:"자신의 생각·의견을 말한 것이다. 주장이 분명한지, 근거가 타당한지, 비약·모순이 없는지, 두괄식으로 설득력 있게 구성됐는지 엄격히 본다.",
-      설명:"어떤 대상을 설명한 것이다. 설명이 명료한지, 순서·구조가 논리적인지, 청자 눈높이에 맞는지, 비유·예시가 적절한지를 엄격히 본다."
+      설명:"어떤 대상을 설명한 것이다. 설명이 명료한지, 순서·구조가 논리적인지, 청자 눈높이에 맞는지, 비유·예시가 적절한지를 엄격히 본다.",
+      순발력:"주어진 세 단어를 모두 사용해 즉석에서 만든 이야기다. 세 단어를 억지 없이 자연스럽게 엮었는지, 이야기에 기승전결·창의성이 있는지, 즉흥성 속에서도 흐름이 매끄럽고 순발력이 돋보이는지 본다. 세 단어 중 빠뜨린 것이 있으면 반드시 지적하라."
     }[type];
     return "너는 매우 깐깐하고 냉정한 한국어 스피치 코치다. 아래 '질문'에 대한 사용자의 '답변'을 평가한다.\n[유형] "+focus+"\n\n"+
       "평가 원칙:\n"+
