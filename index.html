@@ -155,8 +155,9 @@
   .fb .h b{font-size:13px;} .fb .h .sc{margin-left:auto; font-family:"IBM Plex Mono"; font-weight:600; color:var(--teal);}
   .fb .b{padding:14px 15px; display:flex; flex-direction:column; gap:12px;}
   .row{display:flex; gap:10px; font-size:13.5px; line-height:1.55;}
-  .row .tag{flex:0 0 52px; font-size:11px; font-weight:600; padding-top:1px;}
+  .row .tag{flex:0 0 58px; font-size:11px; font-weight:600; padding-top:1px;}
   .row.g .tag{color:var(--good)} .row.w .tag{color:var(--warn)} .row.i .tag{color:var(--accent)}
+  .row.l .tag{color:var(--ink-soft)} .row.h .tag{color:var(--muted)} .row.e .tag{color:var(--teal)}
   .row .txt{margin:0; color:var(--ink-soft);} .row .txt b{color:var(--ink); font-weight:600;}
   .row .txt ul{margin:0; padding-left:16px;} .row .txt li{margin-bottom:3px;}
   .metrics{display:flex; gap:8px; padding:0 15px 14px;}
@@ -234,10 +235,9 @@
 
     <div class="pad">
       <div class="chips" id="chips">
-        <button class="chip on" data-type="면접">🎤 면접</button>
-        <button class="chip" data-type="발표">📊 발표</button>
-        <button class="chip" data-type="낭독">📰 낭독</button>
-        <button class="chip" data-type="말버릇">🗣️ 말버릇</button>
+        <button class="chip on" data-type="읽기">📖 읽기</button>
+        <button class="chip" data-type="생각">💬 생각 말하기</button>
+        <button class="chip" data-type="설명">🧩 설명하기</button>
       </div>
 
       <div class="prompt">
@@ -261,7 +261,7 @@
       <div class="voice" id="voice-card" hidden>
         <div class="v-h"><span class="v-ic">🎧</span><b>발화 분석</b><small id="v-dur"></small></div>
         <div class="v-graph">
-          <div class="v-glabel"><span>억양(피치) 곡선</span><span id="v-pitch-note"></span></div>
+          <div class="v-glabel"><span>높낮이(억양) 변화</span><span id="v-pitch-note"></span></div>
           <canvas id="pitch-canvas" height="92"></canvas>
           <div class="v-gcap"><span id="v-hz-lo"></span><span>세로=높낮이 · 옅은 띠=멈춤</span><span id="v-hz-hi"></span></div>
         </div>
@@ -280,13 +280,16 @@
         <div class="h"><div class="av">굿</div><b>AI 코치 피드백</b><span class="sc" id="fb-score"></span></div>
         <div class="b">
           <div class="row g"><span class="tag">잘한 점</span><p class="txt" id="fb-good"></p></div>
-          <div class="row w"><span class="tag">고칠 점</span><div class="txt"><ul id="fb-fix"></ul></div></div>
+          <div class="row l"><span class="tag">논리·구조</span><p class="txt" id="fb-logic"></p></div>
+          <div class="row w"><span class="tag">보완점</span><div class="txt"><ul id="fb-fix"></ul></div></div>
+          <div class="row h" id="row-habit"><span class="tag">말버릇</span><p class="txt" id="fb-habit"></p></div>
+          <div class="row e" id="row-expr"><span class="tag">표현</span><p class="txt" id="fb-expr"></p></div>
           <div class="row i"><span class="tag">개선 예시</span><p class="txt" id="fb-improved"></p></div>
         </div>
         <div class="metrics">
           <div class="metric ac"><div class="n" id="m-filler">0</div><div class="l">군더더기</div></div>
           <div class="metric te"><div class="n" id="m-len">0s</div><div class="l">답변 길이</div></div>
-          <div class="metric"><div class="n" id="m-struct">—</div><div class="l">구조</div></div>
+          <div class="metric"><div class="n" id="m-tempo">—</div><div class="l">말 속도</div></div>
         </div>
       </div>
     </div>
@@ -346,13 +349,32 @@
 
   // ---------- question bank ----------
   const BANK = {
-    면접: ["1분 동안 자기소개를 해주세요.","본인의 가장 큰 강점과, 그것을 발휘했던 경험을 말해주세요.","가장 큰 약점은 무엇이고, 어떻게 보완하고 있나요?","왜 우리 회사(또는 학교)에 지원했나요?","실패했던 경험과, 거기서 배운 점을 말해주세요.","팀에서 갈등이 생겼을 때 어떻게 해결했나요?","5년 뒤 본인의 모습을 그려서 말해주세요."],
-    발표: ["최근 가장 몰입했던 일을 1분 스피치로 소개해주세요.","'내 인생의 터닝포인트'를 주제로 발표해보세요.","요즘 사람들이 놓치고 있다고 생각하는 것을 말해주세요.","당신이 잘 아는 것을 처음 듣는 사람에게 1분간 설명해보세요.","만약 하루가 25시간이라면, 그 1시간을 어떻게 쓸지 발표해보세요."],
-    낭독: ["아래 원고를 또박또박 낭독해보세요:\n\n오늘 오전, 서울 도심에서 대규모 문화 행사가 열렸습니다. 주최 측은 올해 방문객이 지난해보다 두 배 늘었다고 밝혔습니다.","아래 안내문을 차분하게 읽어보세요:\n\n안녕하세요, 오늘 이 자리에 함께해 주셔서 진심으로 감사합니다. 지금부터 순서에 따라 차근차근 안내해 드리겠습니다.","아래 문장을 감정을 담아 낭독해보세요:\n\n길고 어두운 터널을 지나는 동안에도, 우리는 저마다의 속도로 앞으로 나아가고 있었다."],
-    말버릇: ["오늘 하루 있었던 일을 30초 동안 편하게 말해보세요.","가장 좋아하는 음식과 그 이유를 자유롭게 말해보세요.","주말에 무엇을 할 계획인지 이야기해보세요.","최근에 본 영화나 영상을 친구에게 추천하듯 말해보세요."]
+    읽기: [
+      "아래 원고를 또박또박 낭독해보세요:\n\n오늘 오전, 서울 도심에서 대규모 문화 행사가 열렸습니다. 주최 측은 올해 방문객이 지난해보다 두 배 늘었다고 밝혔습니다.",
+      "아래 안내문을 차분하게 읽어보세요:\n\n안녕하세요, 오늘 이 자리에 함께해 주셔서 진심으로 감사합니다. 지금부터 순서에 따라 차근차근 안내해 드리겠습니다.",
+      "아래 문장을 감정을 담아 낭독해보세요:\n\n길고 어두운 터널을 지나는 동안에도, 우리는 저마다의 속도로 앞으로 나아가고 있었다.",
+      "아래 뉴스를 앵커처럼 또렷하게 읽어보세요:\n\n정부는 오늘, 다음 달부터 대중교통 요금을 동결하기로 했다고 발표했습니다. 시민들의 부담을 고려한 결정이라고 설명했습니다.",
+      "아래 문장을 자연스럽게 끊어 읽어보세요:\n\n좋은 말하기란 화려한 표현이 아니라, 듣는 사람이 편안하게 이해할 수 있는 속도와 리듬에서 나옵니다."
+    ],
+    생각: [
+      "요즘 당신이 가장 관심 있는 주제에 대해 자유롭게 의견을 말해보세요.",
+      "'성공'이란 무엇이라고 생각하나요? 당신의 생각을 이유와 함께 말해보세요.",
+      "최근에 생각이 바뀐 경험이 있다면, 무엇이 왜 바뀌었는지 말해보세요.",
+      "지금 우리 사회에서 가장 바뀌었으면 하는 것은 무엇인가요? 근거를 들어 말해보세요.",
+      "행복한 삶을 위해 가장 중요한 것은 무엇이라고 생각하나요?",
+      "AI가 우리 삶을 더 낫게 만들까요, 아니면 그 반대일까요? 당신의 입장을 밝혀보세요."
+    ],
+    설명: [
+      "당신이 잘 아는 것 하나를, 처음 듣는 사람에게 1분간 설명해보세요.",
+      "당신의 직업(또는 전공)이 하는 일을 초등학생도 알아듣게 설명해보세요.",
+      "최근에 배운 개념 하나를 골라, 모르는 사람에게 쉽게 설명해보세요.",
+      "좋아하는 취미의 매력을, 한 번도 안 해본 사람에게 설명해보세요.",
+      "스마트폰을 처음 쓰는 어르신에게 '앱'이 무엇인지 설명해보세요.",
+      "당신이 사는 동네를, 한 번도 안 가본 사람에게 소개하듯 설명해보세요."
+    ]
   };
-  const LABEL = {면접:"면접 질문", 발표:"발표 주제", 낭독:"낭독 원고", 말버릇:"자유 주제"};
-  let type="면접", qIndex=0;
+  const LABEL = {읽기:"낭독 원고", 생각:"생각 주제", 설명:"설명 주제"};
+  let type="읽기", qIndex=0;
   const qt=$("qt"), answer=$("answer");
   function randIndex(len, exclude){ if(len<=1) return 0; let i; do{ i=Math.floor(Math.random()*len); }while(i===exclude); return i; }
   function showQuestion(){ qt.textContent = BANK[type][qIndex % BANK[type].length]; $("q-label").textContent=LABEL[type]; }
@@ -460,7 +482,13 @@
     $("v-pause").textContent=a.pauseCount+"회"; const pd=$("v-pause-d"); pd.textContent=a.pauseTotal.toFixed(1)+"s";
     const pRatio=a.pauseTotal/a.speakSpan; pd.className="vm-d "+(a.pauseCount===0?"warn":(pRatio>0.35?"hot":"ok")); if(a.pauseCount===0) pd.textContent="쉼 없음";
     $("v-tempo").textContent=a.spm>0?a.spm:"–"; const td=$("v-tempo-d");
-    if(a.perSec>0){ if(a.perSec<3.5){td.textContent="느긋";td.className="vm-d ok";} else if(a.perSec<=6){td.textContent="편안";td.className="vm-d ok";} else if(a.perSec<=7){td.textContent="약간 빠름";td.className="vm-d warn";} else {td.textContent="빠름";td.className="vm-d hot";} } else {td.textContent="음절/분";td.className="vm-d";}
+    if(a.perSec>0){
+      if(a.perSec<3.5){td.textContent="매우 느림";td.className="vm-d hot";}
+      else if(a.perSec<4.5){td.textContent="다소 느림";td.className="vm-d warn";}
+      else if(a.perSec<=6){td.textContent="편안 ✓";td.className="vm-d ok";}
+      else if(a.perSec<=7){td.textContent="다소 빠름";td.className="vm-d warn";}
+      else {td.textContent="매우 빠름";td.className="vm-d hot";}
+    } else {td.textContent="음절/분";td.className="vm-d";}
     $("v-vol").textContent=Math.min(100,Math.round(a.meanVoiced*700)); const vd=$("v-vol-d");
     if(a.dyn<2){vd.textContent="일정";vd.className="vm-d ok";} else if(a.dyn<=4){vd.textContent="자연스러움";vd.className="vm-d ok";} else {vd.textContent="기복 큼";vd.className="vm-d hot";}
     drawPitch(a); $("voice-card").classList.add("show");
@@ -502,7 +530,7 @@
     try{
       res=await fetch("https://api.anthropic.com/v1/messages",{ method:"POST",
         headers:{ "content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
-        body: JSON.stringify({ model:getModel(), max_tokens:1024, messages:[{role:"user",content:prompt}] }) });
+        body: JSON.stringify({ model:getModel(), max_tokens:2048, messages:[{role:"user",content:prompt}] }) });
     }catch(_){ throw {code:"network"}; }
     if(!res.ok){
       let serverMsg=""; try{ const j=await res.json(); serverMsg=(j&&j.error&&j.error.message)||""; }catch(_){}
@@ -517,14 +545,35 @@
 
   function acousticSummary(){
     const a=lastAcoustic; if(!a) return "";
-    const tone=a.semitones<4?"단조로움":(a.semitones<=13?"자연스러움":"기복이 큼");
-    const spd=a.perSec?(a.perSec<3.5?"느긋함":(a.perSec<=6?"편안함":(a.perSec<=7?"약간 빠름":"빠름"))):"측정안됨";
-    return "[음성 분석 결과] 억양 변화 약 "+a.semitones.toFixed(1)+"반음("+tone+"), 멈춤 "+a.pauseCount+"회(총 "+a.pauseTotal.toFixed(1)+"초), 말 속도 약 "+(a.spm||"?")+"음절/분("+spd+").\n이 음성 특징도 피드백에 반영하라. 단조로우면 억양 변화를, 너무 빠르거나 멈춤이 없으면 쉼을 두라고 조언하라. 단 개별 발음 정확성(음소·받침)은 알 수 없으니 언급하지 마라.\n\n";
+    const tone=a.semitones<4?"높낮이 변화 적음(단조로움)":(a.semitones<=13?"높낮이 변화 자연스러움":"높낮이 기복 큼");
+    let spd="측정안됨";
+    if(a.perSec){ spd=a.perSec<3.5?"매우 느림":(a.perSec<4.5?"다소 느림":(a.perSec<=6?"편안(권장)":(a.perSec<=7?"다소 빠름":"매우 빠름"))); }
+    return "[음성 분석(브라우저 측정)] 높낮이 변화 약 "+a.semitones.toFixed(1)+"반음("+tone+"), 멈춤(띄어읽기용 쉼) "+a.pauseCount+"회(총 "+a.pauseTotal.toFixed(1)+"초), 말 속도 약 "+(a.spm||"?")+"음절/분("+spd+"). 듣기 편한 속도는 약 270~360음절/분이다.\n"+
+      "말 속도가 이 범위를 벗어나면 지적하고, 멈춤(띄어읽기)이 과하거나 부족하면 조언하라. 높낮이가 단조로우면 억양에 변화를 주라고 조언하라. 단 개별 발음 정확성이나 사투리/표준어 억양 판별은 불가하니 언급하지 마라.\n\n";
   }
   function buildPrompt(question, ans, metrics){
-    const focus={ 면접:"면접 답변으로서 논리·설득력·두괄식 구조를 중점적으로 본다.", 발표:"발표/스피치로서 도입의 흡인력, 메시지 전달, 구조를 중점적으로 본다.", 낭독:"낭독 원고를 소리 내어 읽은 결과다. 전달력·끊어읽기·강조가 자연스러운지 본다.", 말버릇:"자유로운 말하기다. 군더더기·반복어·장황함 등 말버릇을 중점적으로 본다." }[type];
-    return "너는 한국어 스피치 코치다. 아래 '질문'에 대한 사용자의 '답변'을 평가한다.\n"+focus+"\n두루뭉술한 칭찬은 금지하고 구체적으로 짚는다. 답변이 너무 짧으면 지적한다.\n\n[질문]\n"+question+"\n\n[답변]\n"+ans+"\n\n[참고 지표] 글자수 약 "+metrics.chars+"자, 감지된 군더더기 약 "+metrics.fillers+"개.\n\n"+acousticSummary()+
-    '아래 JSON 형식으로만 답하라. 다른 텍스트는 쓰지 마라.\n{\n  "good": "잘한 점 한 가지를 구체적으로 (1문장)",\n  "fix": ["가장 중요한 고칠 점 (1문장)", "그다음 고칠 점 (1문장)"],\n  "improved": "답변을 다시 다듬은 짧은 예시 문장",\n  "structure": "구조를 한 단어로 (예: 두괄식 / 미괄식 / 산만함 / 결론없음)",\n  "score": "A+~D 사이 한 등급"\n}';
+    const focus={
+      읽기:"주어진 원고를 소리 내어 읽은 결과다. 원고 내용을 정확히 전달했는지, 끊어읽기·강조·리듬이 자연스러운지, 어색하게 읽힌 부분이 있는지를 본다.",
+      생각:"자신의 생각·의견을 말한 것이다. 주장이 분명한지, 근거가 타당한지, 비약·모순이 없는지, 두괄식으로 설득력 있게 구성됐는지 엄격히 본다.",
+      설명:"어떤 대상을 설명한 것이다. 설명이 명료한지, 순서·구조가 논리적인지, 청자 눈높이에 맞는지, 비유·예시가 적절한지를 엄격히 본다."
+    }[type];
+    return "너는 매우 깐깐하고 냉정한 한국어 스피치 코치다. 아래 '질문'에 대한 사용자의 '답변'을 평가한다.\n[유형] "+focus+"\n\n"+
+      "평가 원칙:\n"+
+      "- 형식적·두루뭉술한 칭찬 금지. 잘한 점도 답변 속 실제 표현을 인용해 구체적으로 짚어라.\n"+
+      "- 보완점은 냉정하고 비판적으로. 듣기 좋은 말 대신 실제로 약한 부분을 직설적으로 지적하되 고치는 법도 제시하라.\n"+
+      "- 문장 구조와 논리 흐름을 디테일하게 평가하라: 두괄식 여부, 근거의 타당성, 비약·모순, 늘어지는 문장, 연결의 매끄러움.\n"+
+      "- 군더더기('음/그니까' 등)·반복어·사족이 있으면 콕 집어 지적하라.\n"+
+      "- 유머·인용·비유 등 특정 표현을 썼다면 그것이 효과적이었는지, 어색하거나 부적절하면 그 표현을 인용해 코멘트하라.\n"+
+      "- 답변이 짧거나 부실하면 봐주지 말고 그대로 지적하라.\n\n"+
+      "[질문]\n"+question+"\n\n[답변]\n"+ans+"\n\n[참고 지표] 글자수 약 "+metrics.chars+"자, 감지된 군더더기 약 "+metrics.fillers+"개.\n\n"+acousticSummary()+
+      '아래 JSON 형식으로만 답하라. 각 항목은 구체적이고 실질적으로. 다른 텍스트는 쓰지 마라.\n{\n'+
+      '  "good": "잘한 점을 답변 속 표현을 인용해 구체적으로 (1~2문장)",\n'+
+      '  "logic": "문장 구조와 논리 흐름에 대한 상세하고 비판적인 평가 (2~3문장)",\n'+
+      '  "fix": ["가장 중요한 보완점(냉정·구체적)", "그다음 보완점", "세 번째 보완점(있으면)"],\n'+
+      '  "habit": "군더더기·반복어·사족 지적. 없으면 \\"특이사항 없음\\"",\n'+
+      '  "expression": "유머·인용·비유 등 표현에 대한 코멘트. 해당 없으면 \\"해당 없음\\"",\n'+
+      '  "improved": "답변을 더 낫게 다듬은 짧은 예시",\n'+
+      '  "score": "A+~F 사이 한 등급"\n}';
   }
 
   $("go").addEventListener("click", runFeedback);
@@ -539,7 +588,7 @@
       renderFeedback(data, metrics);
       const now=Date.now();
       addHistory({ ts:now, dateKey:dateKey(now), type:type, chars:metrics.chars, fillers:metrics.fillers, sec:metrics.sec,
-        score:data.score?String(data.score):"", structure:data.structure?String(data.structure):"",
+        score:data.score?String(data.score):"",
         semitones: lastAcoustic?Math.round(lastAcoustic.semitones*10)/10:null, pauses: lastAcoustic?lastAcoustic.pauseCount:null, spm: lastAcoustic?lastAcoustic.spm:null });
     }catch(e){
       const base=(ERR[e&&e.code]||ERR.unknown);
@@ -551,9 +600,16 @@
   function renderFeedback(d, metrics){
     $("thinking").classList.remove("show");
     $("fb-good").textContent=d.good||"—";
+    $("fb-logic").textContent=d.logic||"—";
     const ul=$("fb-fix"); ul.innerHTML=""; (Array.isArray(d.fix)?d.fix:[d.fix]).filter(Boolean).forEach(f=>{ const li=document.createElement("li"); li.textContent=String(f); ul.appendChild(li); });
-    $("fb-improved").textContent=d.improved||"—"; $("fb-score").textContent=d.score?String(d.score):"";
-    $("m-filler").textContent=metrics.fillers; $("m-len").textContent=metrics.sec+"s"; $("m-struct").textContent=d.structure?String(d.structure):"—";
+    const habit=(d.habit||"").trim();
+    if(habit && habit!=="특이사항 없음" && habit!=="없음"){ $("fb-habit").textContent=habit; $("row-habit").hidden=false; } else $("row-habit").hidden=true;
+    const expr=(d.expression||"").trim();
+    if(expr && expr!=="해당 없음" && expr!=="없음"){ $("fb-expr").textContent=expr; $("row-expr").hidden=false; } else $("row-expr").hidden=true;
+    $("fb-improved").textContent=d.improved||"—";
+    $("fb-score").textContent=d.score?String(d.score):"";
+    $("m-filler").textContent=metrics.fillers; $("m-len").textContent=metrics.sec+"s";
+    $("m-tempo").textContent=(lastAcoustic&&lastAcoustic.spm)?lastAcoustic.spm:"—";
     $("fb").classList.add("show"); $("fb").scrollIntoView({behavior:"smooth",block:"nearest"});
   }
 
