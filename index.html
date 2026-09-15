@@ -469,10 +469,11 @@
   // ---------- Claude API (direct browser call) ----------
   const ERR = {
     no_key:"⚙ 설정에서 API 키를 먼저 넣어주세요.",
-    bad_key:"API 키가 올바르지 않아요. ⚙ 설정에서 다시 확인하세요.",
-    rate:"요청이 많아요. 잠시 후 다시 시도해 주세요.",
-    network:"네트워크 오류예요. 연결을 확인하고 다시 시도하세요.",
-    parse:"결과를 읽지 못했어요. 다시 시도해 주세요.",
+    bad_key:"API 키가 올바르지 않아요(401). ⚙ 설정에서 다시 확인하세요.",
+    bad_request:"요청 오류(400) — 대개 크레딧 부족이거나 모델/입력 문제예요.",
+    rate:"요청이 많아요(429). 잠시 후 다시 시도해 주세요.",
+    network:"네트워크/CORS 오류예요. 연결을 확인하고 다시 시도하세요.",
+    parse:"AI 응답을 JSON으로 읽지 못했어요. 다시 시도해 주세요.",
     unknown:"오류가 발생했어요. 다시 시도해 주세요."
   };
   function extractJSON(text){
@@ -490,7 +491,11 @@
         headers:{ "content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
         body: JSON.stringify({ model:getModel(), max_tokens:1024, messages:[{role:"user",content:prompt}] }) });
     }catch(_){ throw {code:"network"}; }
-    if(!res.ok){ let code="unknown"; if(res.status===401) code="bad_key"; else if(res.status===429) code="rate"; throw {code, status:res.status}; }
+    if(!res.ok){
+      let serverMsg=""; try{ const j=await res.json(); serverMsg=(j&&j.error&&j.error.message)||""; }catch(_){}
+      let code="unknown"; if(res.status===401) code="bad_key"; else if(res.status===429) code="rate"; else if(res.status===400) code="bad_request";
+      throw {code, status:res.status, serverMsg};
+    }
     const data=await res.json();
     const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
     const parsed=extractJSON(text); if(!parsed) throw {code:"parse", text};
@@ -523,7 +528,11 @@
       addHistory({ ts:now, dateKey:dateKey(now), type:type, chars:metrics.chars, fillers:metrics.fillers, sec:metrics.sec,
         score:data.score?String(data.score):"", structure:data.structure?String(data.structure):"",
         semitones: lastAcoustic?Math.round(lastAcoustic.semitones*10)/10:null, pauses: lastAcoustic?lastAcoustic.pauseCount:null, spm: lastAcoustic?lastAcoustic.spm:null });
-    }catch(e){ $("thinking").innerHTML='<span class="err">'+(ERR[e&&e.code]||ERR.unknown)+'</span>'; }
+    }catch(e){
+      const base=(ERR[e&&e.code]||ERR.unknown);
+      const extra=(e&&e.serverMsg)?(" — "+e.serverMsg):"";
+      $("thinking").innerHTML='<span class="err">'+base+extra+'</span>';
+    }
     finally{ $("go").disabled=false; }
   }
   function renderFeedback(d, metrics){
