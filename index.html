@@ -360,9 +360,10 @@
     const b=e.target.closest(".chip"); if(!b) return;
     type=b.dataset.type; qIndex=0;
     document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on", c===b));
-    showQuestion(); hideFeedback(); hideVoice(); lastAcoustic=null;
+    showQuestion(); resetAnswer(); hideFeedback(); hideVoice(); lastAcoustic=null;
   });
-  $("nextq").addEventListener("click", ()=>{ rotateQuestion(); hideFeedback(); hideVoice(); lastAcoustic=null; });
+  $("nextq").addEventListener("click", ()=>{ rotateQuestion(); resetAnswer(); hideFeedback(); hideVoice(); lastAcoustic=null; });
+  function resetAnswer(){ if(recording) stopRec(); baseText=""; answer.value=""; updateCounts(); setMicStatus(null); }
 
   // ---------- local metrics ----------
   const FILLERS=["음","어","그니까","그러니까","약간","뭐랄까","뭔가","그","저기","이제","인제","막","좀","아니","뭐"];
