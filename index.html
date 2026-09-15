@@ -354,11 +354,12 @@
   const LABEL = {면접:"면접 질문", 발표:"발표 주제", 낭독:"낭독 원고", 말버릇:"자유 주제"};
   let type="면접", qIndex=0;
   const qt=$("qt"), answer=$("answer");
+  function randIndex(len, exclude){ if(len<=1) return 0; let i; do{ i=Math.floor(Math.random()*len); }while(i===exclude); return i; }
   function showQuestion(){ qt.textContent = BANK[type][qIndex % BANK[type].length]; $("q-label").textContent=LABEL[type]; }
-  function rotateQuestion(){ qIndex=(qIndex+1)%BANK[type].length; showQuestion(); }
+  function rotateQuestion(){ qIndex=randIndex(BANK[type].length, qIndex); showQuestion(); }
   $("chips").addEventListener("click", e=>{
     const b=e.target.closest(".chip"); if(!b) return;
-    type=b.dataset.type; qIndex=0;
+    type=b.dataset.type; qIndex=randIndex(BANK[type].length, -1);
     document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on", c===b));
     showQuestion(); resetAnswer(); hideFeedback(); hideVoice(); lastAcoustic=null;
   });
@@ -409,21 +410,31 @@
 
   // ---------- acoustic analysis ----------
   const SIL=0.012;
-  let aStream=null, aCtx=null, aAnalyser=null, aTimer=null, aSamples=[], aStart=0, lastAcoustic=null;
+  let aStream=null, aCtx=null, aAnalyser=null, aSrc=null, aBuf=null, aTimer=null, aSamples=[], aStart=0, lastAcoustic=null;
   async function startAudio(){
     aSamples=[]; lastAcoustic=null;
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
     try{ aStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}}); }
     catch(err){ aStream=null; const n=(err&&err.name)||""; if(n==="NotAllowedError"||n==="SecurityError") setMicStatus("🎤 마이크 권한이 거부됐어요. 주소창 자물쇠 → 마이크 허용 후 다시 시도하세요.","warn"); else if(n==="NotFoundError") setMicStatus("🎤 마이크를 찾지 못했어요.","warn"); else setMicStatus("🎤 마이크를 열 수 없어요("+(n||"오류")+").","warn"); return false; }
     try{
-      aCtx=new (window.AudioContext||window.webkitAudioContext)(); if(aCtx.state==="suspended") await aCtx.resume();
-      const src=aCtx.createMediaStreamSource(aStream); aAnalyser=aCtx.createAnalyser(); aAnalyser.fftSize=2048; src.connect(aAnalyser);
-      const buf=new Float32Array(aAnalyser.fftSize); aStart=performance.now();
-      aTimer=setInterval(()=>{ aAnalyser.getFloatTimeDomainData(buf); const rms=computeRMS(buf); const pitch=rms>SIL?detectPitch(buf,aCtx.sampleRate):null; aSamples.push({t:(performance.now()-aStart)/1000,pitch,rms}); },55);
+      // AudioContext는 한 번만 만들어 재사용 (Safari의 컨텍스트 개수 제한 회피)
+      if(!aCtx) aCtx=new (window.AudioContext||window.webkitAudioContext)();
+      if(aCtx.state==="suspended") await aCtx.resume();
+      if(!aAnalyser){ aAnalyser=aCtx.createAnalyser(); aAnalyser.fftSize=2048; }
+      if(!aBuf) aBuf=new Float32Array(aAnalyser.fftSize);
+      if(aSrc){ try{aSrc.disconnect();}catch(_){} }
+      aSrc=aCtx.createMediaStreamSource(aStream); aSrc.connect(aAnalyser);
+      aStart=performance.now();
+      aTimer=setInterval(()=>{ aAnalyser.getFloatTimeDomainData(aBuf); const rms=computeRMS(aBuf); const pitch=rms>SIL?detectPitch(aBuf,aCtx.sampleRate):null; aSamples.push({t:(performance.now()-aStart)/1000,pitch,rms}); },55);
       return true;
     }catch(_){ cleanupAudio(); return false; }
   }
-  function cleanupAudio(){ if(aTimer){clearInterval(aTimer);aTimer=null;} if(aStream){aStream.getTracks().forEach(t=>t.stop());aStream=null;} if(aCtx){try{aCtx.close();}catch(_){}aCtx=null;} }
+  function cleanupAudio(){
+    if(aTimer){clearInterval(aTimer);aTimer=null;}
+    if(aSrc){ try{aSrc.disconnect();}catch(_){} aSrc=null; }
+    if(aStream){ aStream.getTracks().forEach(t=>t.stop()); aStream=null; }
+    // aCtx는 닫지 않고 재사용
+  }
   function stopAudio(){ cleanupAudio(); if(aSamples.length<6) return; const a=analyzeSamples(aSamples); const syll=(answer.value.match(/[가-힣]/g)||[]).length; a.perSec=a.activeTime>0?syll/a.activeTime:0; a.spm=Math.round(a.perSec*60); lastAcoustic=a; renderVoice(a); }
   function computeRMS(buf){ let s=0; for(let i=0;i<buf.length;i++) s+=buf[i]*buf[i]; return Math.sqrt(s/buf.length); }
   function detectPitch(buf,sr){ const N=buf.length; let mean=0; for(let i=0;i<N;i++) mean+=buf[i]; mean/=N; let norm0=0; for(let i=0;i<N;i++){ const v=buf[i]-mean; norm0+=v*v; } if(norm0<1e-5) return null; const minHz=80,maxHz=380,maxLag=Math.floor(sr/minHz),minLag=Math.floor(sr/maxHz); let bestLag=-1,best=0; for(let lag=minLag;lag<=maxLag;lag++){ let sum=0; for(let i=0;i<N-lag;i++) sum+=(buf[i]-mean)*(buf[i+lag]-mean); const nac=sum/norm0; if(nac>best){best=nac;bestLag=lag;} } if(bestLag<1||best<0.35) return null; const f0=sr/bestLag; return (f0>=minHz&&f0<=maxHz)?f0:null; }
@@ -593,6 +604,7 @@
   let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(statList.length) renderMetricGraph(currentMetric); if(lastAcoustic) drawPitch(lastAcoustic); },150); });
 
   // ---------- init ----------
+  qIndex=randIndex(BANK[type].length, -1);
   loadSettings(); showQuestion(); updateCounts(); renderStats(loadHistory());
 })();
 </script>
