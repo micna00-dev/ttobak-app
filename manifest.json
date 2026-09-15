@@ -1,0 +1,15 @@
+{
+  "name": "굿피치",
+  "short_name": "굿피치",
+  "description": "AI 스피치 코치 — 억양·멈춤·속도 분석과 피드백",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7F4EF",
+  "theme_color": "#E8654B",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

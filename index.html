@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>또박또박 스피치 코치</title>
+<title>굿피치</title>
 <meta name="theme-color" content="#E8654B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="또박또박">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231E2A38'/%3E%3Ctext x='50' y='68' font-size='54' text-anchor='middle' fill='white' font-family='sans-serif'%3E또%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-title" content="굿피치">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -196,13 +198,13 @@
 <div class="wrap">
   <div class="intro">
     <p class="eyebrow">AI Speech Coach · 독립 웹앱</p>
-    <h1>또박또박 스피치 코치</h1>
+    <h1>굿피치</h1>
     <p>말하기로 녹음하면 억양·멈춤·속도를 분석하고, 클로드가 내용·구조 피드백을 줍니다.</p>
   </div>
 
   <div class="app">
     <div class="app-head">
-      <div class="logo">또</div><b>스피치 코치</b>
+      <div class="logo">굿</div><b>굿피치</b>
       <button class="gear" id="gear">⚙ 설정</button>
     </div>
 
@@ -275,7 +277,7 @@
       <div class="thinking" id="thinking"><span class="spin"></span><span id="think-txt">클로드가 답변을 분석하고 있어요…</span></div>
 
       <div class="fb" id="fb">
-        <div class="h"><div class="av">또</div><b>AI 코치 피드백</b><span class="sc" id="fb-score"></span></div>
+        <div class="h"><div class="av">굿</div><b>AI 코치 피드백</b><span class="sc" id="fb-score"></span></div>
         <div class="b">
           <div class="row g"><span class="tag">잘한 점</span><p class="txt" id="fb-good"></p></div>
           <div class="row w"><span class="tag">고칠 점</span><div class="txt"><ul id="fb-fix"></ul></div></div>
@@ -328,8 +330,7 @@
     $("api-key").value = getKey();
     $("model").value = getModel();
     if(!getKey()){
-      $("settings").hidden = false;
-      showBanner("먼저 ⚙ 설정에서 <b>API 키</b>를 넣어야 AI 피드백이 작동해요. (녹음·음향 분석은 키 없이도 됩니다)");
+      showBanner("AI 피드백을 쓰려면 우측 상단 <b>⚙ 설정</b>을 눌러 API 키를 넣어주세요. (녹음·음향 분석은 키 없이도 됩니다)");
     }
   }
   $("save-key").addEventListener("click", ()=>{
@@ -519,7 +520,7 @@
     const ans=answer.value.trim(); if(ans.length<2){ answer.focus(); return; }
     if(recording) stopRec();
     const metrics=updateCounts();
-    if(!getKey()){ $("settings").hidden=false; showBanner("먼저 ⚙ 설정에서 <b>API 키</b>를 넣어주세요."); return; }
+    if(!getKey()){ showBanner("AI 피드백을 쓰려면 우측 상단 <b>⚙ 설정</b>을 눌러 API 키를 넣어주세요."); return; }
     hideFeedback(); $("thinking").innerHTML='<span class="spin"></span><span>클로드가 답변을 분석하고 있어요…</span>'; $("thinking").classList.add("show"); $("go").disabled=true;
     try{
       const data=await callClaudeJSON(buildPrompt(qt.textContent, ans, metrics));
